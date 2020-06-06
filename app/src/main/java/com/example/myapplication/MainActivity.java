@@ -2,32 +2,20 @@ package com.example.myapplication;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import com.google.appinventor.components.runtime.Form;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.List;
 
 import okhttp3.Call;
@@ -83,28 +71,30 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     public void toggleLED(View view) {
         Log.i("UDP", Boolean.toString(isLEDOn));
-        new ToggleLED(isLEDOn, ip, port).execute();
-        if (!isLEDOn) {
-            Toast.makeText(MainActivity.this, "LED angeschaltet.", Toast.LENGTH_SHORT).show();
-            toggleLEDBtn.setText("LED aus");
-        } else {
+        if (isLEDOn) {
+            new UDPTask("led0", ip, port).execute();
             Toast.makeText(MainActivity.this, "LED ausgeschaltet.", Toast.LENGTH_SHORT).show();
             toggleLEDBtn.setText("LED an");
+        } else {
+            new UDPTask("led1", ip, port).execute();
+            Toast.makeText(MainActivity.this, "LED angeschaltet.", Toast.LENGTH_SHORT).show();
+            toggleLEDBtn.setText("LED aus");
         }
         isLEDOn = !isLEDOn;
     }
 
     public void startMotor1(View view) {
-        Log.i("Motor1", "start Motor 1");
-        new ToggleLED(isLEDOn, ip, port).execute();
-        if (!isLEDOn) {
-            Toast.makeText(MainActivity.this, "LED angeschaltet.", Toast.LENGTH_SHORT).show();
-            toggleLEDBtn.setText("LED aus");
-        } else {
-            Toast.makeText(MainActivity.this, "LED ausgeschaltet.", Toast.LENGTH_SHORT).show();
-            toggleLEDBtn.setText("LED an");
+        startMotor(1);
         }
-        isLEDOn = !isLEDOn;
+
+    public void startMotor2(View view) {
+        startMotor(2);
+    }
+
+    public void startMotor(int motorNumber) {
+        Log.i("Motor", "started Motor " + motorNumber);
+        new UDPTask("motorOn", ip, port).execute();
+        Toast.makeText(MainActivity.this, "Motor 1 angeschaltet.", Toast.LENGTH_SHORT).show();
     }
 
     private void checkIfLightSensorIsAvailable() {
@@ -153,6 +143,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     isReferenceInitialized = true;
                 }
                 if ((currentLux - referenceBrightness) > sensitivity && signal < maxSignal) {
+                    //startMotor(1);
                     signal += 1;
                     signalTextView.setText(Integer.toString(signal));
                     sendMotorSignal(signal);

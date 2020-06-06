@@ -12,17 +12,21 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 
+enum task {
+    LEDon, LEDoff, Motor1on, Motor1off, Motor2on, Motor2off
+}
 
-public class ToggleLED extends AsyncTask<Void, Void, Void> {
+public class UDPTask extends AsyncTask<Void, Void, Void> {
     // Wifi needs to be connected to NanoESP
+    private task task;
     private String ip;
     private int port;
     private boolean isLEDOn;
     private String msg;
 
-    public ToggleLED(boolean isLEDOn, String ip, int port) {
+    public UDPTask(String msg, String ip, int port) {
         super();
-        this.isLEDOn = isLEDOn;
+        this.msg = msg;
         this.ip = ip;
         this.port = port;
     }
@@ -34,15 +38,12 @@ public class ToggleLED extends AsyncTask<Void, Void, Void> {
             DatagramSocket socket = new DatagramSocket();
             InetAddress address = InetAddress.getByName(ip);
             Log.i("UDP", address.getHostAddress());
-            if (isLEDOn) msg = "led0";
-            if (!isLEDOn) msg = "led1";
-            Log.i("UDP", Boolean.toString(isLEDOn));
             Log.i("UDP", msg);
             byte[] buf = msg.getBytes();
             DatagramPacket packet
                     = new DatagramPacket(buf, buf.length, address, port);
             socket.send(packet);
-            //   socket.close();
+            socket.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
