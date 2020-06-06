@@ -32,8 +32,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private float referenceBrightness;
     private boolean isReferenceInitialized = false;
     private int signal = 0;
-    private final int maxSignal = 50;
-    private final int minSignal = -50;
+    private final int maxSignal = 255;  //maximum der Arduino PWM
+    private final int minSignal = -255;
     private final int sensitivity = 100; //how many lux the light needs to increase to start the motor
     TextView brightnessTextView;
     TextView signalTextView;
@@ -83,18 +83,44 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         isLEDOn = !isLEDOn;
     }
 
-    public void startMotor1(View view) {
-        startMotor(1);
-        }
-
+    public void startMotor1(View view) { startMotor(1); }
     public void startMotor2(View view) {
         startMotor(2);
     }
 
+    public void stopMotor1(View view) {
+        stopMotor(1);
+    }
+    public void stopMotor2(View view) { stopMotor(2); }
+
+    public void backMotor1(View view) { backMotor(1); }
+    public void backMotor2(View view) { backMotor(2); }
+
     public void startMotor(int motorNumber) {
         Log.i("Motor", "started Motor " + motorNumber);
-        new UDPTask("motorOn", ip, port).execute();
-        Toast.makeText(MainActivity.this, "Motor 1 angeschaltet.", Toast.LENGTH_SHORT).show();
+        new UDPTask("motor" + motorNumber + "Forwards", ip, port).execute();
+        Toast.makeText(MainActivity.this, "Motor " + motorNumber + " angeschaltet.", Toast.LENGTH_SHORT).show();
+    }
+
+    public void stopMotor(int motorNumber) {
+        Log.i("Motor", "stopped Motor " + motorNumber);
+        new UDPTask("motor" + motorNumber + "Stop", ip, port).execute();
+        Toast.makeText(MainActivity.this, "Motor " + motorNumber + " gestoppt.", Toast.LENGTH_SHORT).show();
+    }
+
+    public void backMotor(int motorNumber) {
+        Log.i("Motor", "started Motor " + motorNumber + " backwards");
+        new UDPTask("motor" + motorNumber + "Backwards", ip, port).execute();
+        Toast.makeText(MainActivity.this, "Motor " + motorNumber + " andersrum gestartet.", Toast.LENGTH_SHORT).show();
+    }
+
+    public void motorForwardWithSignal(int motorNumber, int signal) {
+        int turnedAroundSignal = 210 - signal;
+        String formattedSignal = String.format("%03d", turnedAroundSignal);  // erzeugt aus Signal immer eine 3 Stellige Zahl mit vorne aufgefüllten Nullen (signal geht von 001 bis 255)
+        signalTextView.setText(formattedSignal);
+        Log.i("Motor", "started Motor " + motorNumber + " vorwärts mit Geschwindigkeit: " + formattedSignal);
+        new UDPTask("motor" + motorNumber + "ForwardWithSignal" + formattedSignal, ip, port).execute();
+        Toast.makeText(MainActivity.this, "Motor " + motorNumber + " andersrum gestartet.", Toast.LENGTH_SHORT).show();
     }
 
     private void checkIfLightSensorIsAvailable() {
@@ -145,7 +171,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 if ((currentLux - referenceBrightness) > sensitivity && signal < maxSignal) {
                     //startMotor(1);
                     signal += 1;
-                    signalTextView.setText(Integer.toString(signal));
+                    motorForwardWithSignal(2, signal);
                     sendMotorSignal(signal);
                     isSearchingShadow = true;
                 }

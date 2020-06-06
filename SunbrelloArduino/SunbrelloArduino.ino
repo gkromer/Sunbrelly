@@ -15,7 +15,14 @@ int position1 = 0;
 
 SoftwareSerial esp8266(11, 12); // RX, TX
 
+int motorPin1=2;
+int motorPin2=3; // PWM
+
 void setup() {
+
+  pinMode(motorPin1,OUTPUT);
+  pinMode(motorPin2,OUTPUT);
+ 
   servo1.attach (10);
   
   Serial.begin(19200);
@@ -40,17 +47,31 @@ void setup() {
     
 }
 
-void loop() {
+void motor2Stop(){
+  digitalWrite(motorPin1,LOW);
+  digitalWrite(motorPin2,LOW);
+}
+
+void loop() { 
+//  //Fading the LED
+//  for(int i=0; i<255; i++){
+//    analogWrite(LED, i);
+//    delay(5);
+//  }
+//
+//  for(int i=255; i>0; i--){
+//    analogWrite(LED, i);
+//    delay(5);
+//  }
   
   if (esp8266.available())
   {
-    Serial.println("esp ready");
+    Serial.println("ESP ready");
     if (esp8266.find("+IPD,"))
     {
-      Serial.println("Here");
-//      if (esp8266.find(":")) {
+      Serial.println("command received");
       String task = esp8266.readStringUntil('\r');
-      Serial.println("task");
+      Serial.println(task);
       
       if (task.indexOf("led0") >= 0) {
         int setLed = 0;
@@ -71,17 +92,35 @@ void loop() {
           sendCom("LED=" + String(setLed), "OK");
         }
       }
-      else if (task.indexOf("motorOn") >= 0) {
+      else if (task.indexOf("motor1On") >= 0) {
         debug("motor1=on");
-        if (position1 >= 180) {
+        if (position1 >= 360) {
           position1 = 0;
         }
-        while (position1 < 180) {
+        while (position1 < 360) {
           servo1.write(position1);
-          delay(30);
+          delay(20);
           position1++;
         }
         position1 = 0;   
+      } else if (task.indexOf("motor2Forwards") >= 0) {
+            digitalWrite(motorPin1,HIGH);   // Motor Vor
+            digitalWrite(motorPin2,LOW);
+            delay(1000);
+            motor2Stop();                    // Motor Stop
+      } else if (task.indexOf("motor2Backwards") >= 0) {
+            digitalWrite(motorPin1,LOW);   // Motor Vor
+            digitalWrite(motorPin2,HIGH);
+            delay(1000);
+            motor2Stop(); 
+      } else if (task.indexOf("motor2Stop") >= 0) {
+            motor2Stop(); 
+      } else if (task.indexOf("motor2ForwardWithSignal") >= 0) {  //das Signal enthält die gewünschte Geschwindigkeit
+        String speedString = task.substring((task.indexOf("motor2ForwardWithSignal") + 23), task.indexOf("motor2ForwardWithSignal") + 26);
+        Serial.println("SPEED: " + speedString);
+        int speed = speedString.toInt();
+            digitalWrite(motorPin1, HIGH);   // Motor langsam zu schnell
+            analogWrite(motorPin2, speed);      
       } else {
         debug("Wrong UDP Command");
         if (sendCom("AT+CIPSEND=19", ">"))
