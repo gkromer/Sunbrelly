@@ -119,8 +119,14 @@ void loop() {
         String speedString = task.substring((task.indexOf("motor2ForwardWithSignal") + 23), task.indexOf("motor2ForwardWithSignal") + 26);
         Serial.println("SPEED: " + speedString);
         int speed = speedString.toInt();
-            digitalWrite(motorPin1, HIGH);   // Motor langsam zu schnell
+            digitalWrite(motorPin1, LOW);   // Motor langsam zu schnell
             analogWrite(motorPin2, speed);      
+      } else if (task.indexOf("motor2BackwardWithSignal") >= 0) {  //das Signal enthält die gewünschte Geschwindigkeit
+        String speedString = task.substring((task.indexOf("motor2BackwardWithSignal") + 24), task.indexOf("motor2BackwardWithSignal") + 27);
+        Serial.println("SPEED: " + speedString);
+        int speed = speedString.toInt();
+            digitalWrite(motorPin1, speed);   // Motor langsam zu schnell
+            analogWrite(motorPin2, LOW);      
       } else {
         debug("Wrong UDP Command");
         if (sendCom("AT+CIPSEND=19", ">"))
