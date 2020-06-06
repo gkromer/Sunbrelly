@@ -14,6 +14,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.appinventor.components.runtime.Form;
 
@@ -49,6 +50,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     TextView brightnessTextView;
     TextView signalTextView;
     TextView stopStart;
+    TextView toggleLEDBtn;
     private float currentLux;
     private boolean hasLightSensor = false;
     private TextView serverSignal;
@@ -69,6 +71,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         signalTextView = (TextView) findViewById(R.id.electricitySignal);
         serverSignal = (TextView) findViewById(R.id.serverSignal);
         stopStart = (TextView) findViewById(R.id.stop);
+        toggleLEDBtn = (TextView) findViewById(R.id.toggleLEDBtn);
 
         sensorManager = (SensorManager) this.getSystemService(SENSOR_SERVICE);
         light = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
@@ -79,35 +82,48 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
     public void toggleLED(View view) {
-        //UDP Client erstellen
         Log.i("UDP", Boolean.toString(isLEDOn));
         new ToggleLED(isLEDOn, ip, port).execute();
+        if (!isLEDOn) {
+            Toast.makeText(MainActivity.this, "LED angeschaltet.", Toast.LENGTH_SHORT).show();
+            toggleLEDBtn.setText("LED aus");
+        } else {
+            Toast.makeText(MainActivity.this, "LED ausgeschaltet.", Toast.LENGTH_SHORT).show();
+            toggleLEDBtn.setText("LED an");
+        }
         isLEDOn = !isLEDOn;
     }
 
+    public void startMotor1(View view) {
+        Log.i("Motor1", "start Motor 1");
+        new ToggleLED(isLEDOn, ip, port).execute();
+        if (!isLEDOn) {
+            Toast.makeText(MainActivity.this, "LED angeschaltet.", Toast.LENGTH_SHORT).show();
+            toggleLEDBtn.setText("LED aus");
+        } else {
+            Toast.makeText(MainActivity.this, "LED ausgeschaltet.", Toast.LENGTH_SHORT).show();
+            toggleLEDBtn.setText("LED an");
+        }
+        isLEDOn = !isLEDOn;
+    }
 
     private void checkIfLightSensorIsAvailable() {
         //get list of supported Sensors
         List<Sensor> list = sensorManager.getSensorList(Sensor.TYPE_ALL);
         for (Sensor sensor : list) {
             if (sensor.getName().contains("Light") || sensor.getName().contains("light")) {
-                // maxLux = light.getMaximumRange();
                 hasLightSensor = true;
                 Log.i("light sensor", "exists!");
-
-                //Log.i("light sensor version", Integer.toString(sensor.getVersion()));
             }
             Log.i("sensor", sensor.getName() + sensor.toString());
         }
-        //error message, if no light sensor was found
         if (!hasLightSensor) {
-            Log.i("info", "Mensch Kerle, es konnte kein Lichtsensor gefunden werden...");
+            Log.i("info", "Kein Lichtsensor gefunden...");
             for (Sensor sensor : list) {
                 Log.i("sensor", sensor.getName() + sensor.toString());
             }
         }
         Log.i("light sensor", "" + hasLightSensor);
-
     }
 
     @Override
@@ -135,23 +151,19 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 if (!isReferenceInitialized) {
                     referenceBrightness = currentLux;
                     isReferenceInitialized = true;
-
                 }
-                if ((currentLux - referenceBrightness) > 300 && signal < maxSignal) {
+                if ((currentLux - referenceBrightness) > sensitivity && signal < maxSignal) {
                     signal += 1;
                     signalTextView.setText(Integer.toString(signal));
                     sendMotorSignal(signal);
                     isSearchingShadow = true;
-
                 }
-                if (((currentLux - referenceBrightness) <= 300) && isSearchingShadow) {
+                if (((currentLux - referenceBrightness) <= sensitivity) && isSearchingShadow) {
                     signal = 0;
                     signalTextView.setText(Integer.toString(signal));
                     sendMotorSignal(signal);
                     isSearchingShadow = false;
-
                 }
-
             }
         }
 
@@ -175,12 +187,33 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         sendMotorSignal(signal);
     }
 
+    public void setClicked(View view) {
+        referenceBrightness = currentLux;
+        isReferenceInitialized = true;
+        Toast.makeText(MainActivity.this, "Helligkeit gesetzt.", Toast.LENGTH_SHORT).show();
+    }
+
+    public void stopClicked(View view) {
+        if (!isStopped) {
+            isStopped = true;
+            stopStart.setText("Start");
+            signal = 0;
+            signalTextView.setText(Integer.toString(signal));
+            sendMotorSignal(signal);
+            Toast.makeText(MainActivity.this, "Lichtsteuerung ausgeschaltet.", Toast.LENGTH_SHORT).show();
+        } else {
+            isStopped = false;
+            stopStart.setText("Stop");
+            signal = 0;
+            signalTextView.setText(Integer.toString(signal));
+            sendMotorSignal(signal);
+            Toast.makeText(MainActivity.this, "Lichtsteuerung eingeschaltet.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     public void sendMotorSignal(int signal) {
-
-
         Log.d("OKHTTP", "Post signal function called");
-        String url = "https://shielded-everglades-18448.herokuapp.com/postSignal";
-        // String url = "https://reqres.in/api/users";
+        String url = "https://shielded-everglades-18448.herokuapp.com/postSignal"; // connection to Java server
         MediaType JSON = MediaType.parse("application/json;charset=utf-8");
         JSONObject actualdata = new JSONObject();
         try {
@@ -224,7 +257,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
     public void sendMsgToServer(String msg) {
-
         Log.d("OKHTTP", "Post message function called");
         String url = "https://shielded-everglades-18448.herokuapp.com/postMsg";
         MediaType JSON = MediaType.parse("application/json;charset=utf-8");
@@ -264,86 +296,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     });
                 }
             }
-
         });
     }
-
-    public void setClicked(View view) {
-        referenceBrightness = currentLux;
-        isReferenceInitialized = true;
-    }
-
-    public void stopClicked(View view) {
-        if (!isStopped) {
-            isStopped = true;
-            stopStart.setText("Start");
-            signal = 0;
-            signalTextView.setText(Integer.toString(signal));
-            sendMotorSignal(signal);
-        } else {
-            isStopped = false;
-            stopStart.setText("Stop");
-            signal = 0;
-            signalTextView.setText(Integer.toString(signal));
-            sendMotorSignal(signal);
-        }
-
-    }
-
-    //Http get request
-//    public void getRequest() throws MalformedURLException {
-//        URL url = new URL("https://jsonplaceholder.typicode.com/posts/1");
-//        HttpURLConnection client = null;
-//        try {
-//            client = (HttpURLConnection) url.openConnection();
-//            client.setRequestMethod("POST");
-//            client.setRequestProperty("Key", "Value");
-//            client.setDoOutput(true);
-//            OutputStream outputPost = new BufferedOutputStream(client.getOutputStream());
-//            // writeStream(outputPost);
-//            outputPost.flush();
-//            outputPost.close();
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//            Log.i("fail", "Get request failed");
-//        }  finally {
-//            if(client != null) // Stelle sicher, dass die Verbindung nicht null ist.
-//                client.disconnect();
-//        }
-//    }
-
-//    //Image download
-//    public void downloadImage(View view) {
-//        ImageDownloader task = new ImageDownloader();
-//        Bitmap myImage;
-//        try {
-//            myImage = task.execute("https://upload.wikimedia.org/wikipedia/en/0/02/Homer_Simpson_2006.png").get();
-//            Log.i("info", "Bild geladen");
-//            imageView.setImageBitmap(myImage);
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//    }
-//
-//    public class ImageDownloader extends AsyncTask<String, Void, Bitmap> {
-//
-//        @Override
-//        protected Bitmap doInBackground(String... urls) {
-//
-//            try {
-//                URL url = new URL(urls[0]);
-//                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-//                connection.connect();
-//                InputStream inputStream = connection.getInputStream();
-//                Bitmap myBitmap = BitmapFactory.decodeStream(inputStream);
-//
-//                return myBitmap;
-//            } catch (MalformedURLException e) {
-//                e.printStackTrace();
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//            }
-//            return null;
-//        }
-//    }
 }

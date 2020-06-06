@@ -7,6 +7,19 @@
     android:background="@android:color/background_light"
     tools:context=".MainActivity">
 
+    <Button
+        android:id="@+id/startMotor1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:onClick="startMotor1"
+        android:text="Start Motor 1"
+        app:layout_constraintBottom_toTopOf="@+id/title"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.498"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.495" />
+
     <TextView
         android:id="@+id/output"
         android:layout_width="wrap_content"
