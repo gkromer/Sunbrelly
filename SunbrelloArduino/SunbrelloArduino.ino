@@ -8,22 +8,22 @@ No change necessary.
 #define LED 9
 #include <Arduino.h>
 #include <SoftwareSerial.h>
-#include <Servo.h>
-Servo servo1;
-int position1 = 0;
+
 //Servo servo2;
 
 SoftwareSerial esp8266(11, 12); // RX, TX
 
 int motorPin1=2;
 int motorPin2=3; // PWM
+int motor2Pin1=4;
+int motor2Pin2=5; // PWM
 
 void setup() {
 
   pinMode(motorPin1,OUTPUT);
   pinMode(motorPin2,OUTPUT);
- 
-  servo1.attach (10);
+   pinMode(motor2Pin1,OUTPUT);
+  pinMode(motor2Pin2,OUTPUT);
   
   Serial.begin(19200);
   esp8266.begin(19200);
@@ -45,11 +45,6 @@ void setup() {
    
     pinMode(LED, OUTPUT);
     
-}
-
-void motor2Stop(){
-  digitalWrite(motorPin1,LOW);
-  digitalWrite(motorPin2,LOW);
 }
 
 void loop() { 
@@ -74,61 +69,60 @@ void loop() {
       Serial.println(task);
       
       if (task.indexOf("led0") >= 0) {
-        int setLed = 0;
-        digitalWrite(LED, setLed);
-
-        debug("LED=" + String(setLed));
-        if (sendCom("AT+CIPSEND=7", ">"))
-        {
-          sendCom("LED=" + String(setLed), "OK");
-        }
+        toggleLED(0);
       } else if (task.indexOf("led1") >= 0) {
-        int setLed = 1;
-        digitalWrite(LED, setLed);
-
-        debug("LED=" + String(setLed));
-        if (sendCom("AT+CIPSEND=7", ">"))
-        {
-          sendCom("LED=" + String(setLed), "OK");
-        }
-      }
-      else if (task.indexOf("motor1On") >= 0) {
-        debug("motor1=on");
-        if (position1 >= 360) {
-          position1 = 0;
-        }
-        while (position1 < 360) {
-          servo1.write(position1);
-          delay(20);
-          position1++;
-        }
-        position1 = 0;   
-      } else if (task.indexOf("motor2Forwards") >= 0) {
-            digitalWrite(motorPin1,HIGH);   // Motor Vor
-            digitalWrite(motorPin2,LOW);
-            delay(1000);
-            motor2Stop();                    // Motor Stop
-      } else if (task.indexOf("motor2Backwards") >= 0) {
+       toggleLED(1);
+      } else if (task.indexOf("motor1Forwards") >= 0) {
             digitalWrite(motorPin1,LOW);   // Motor Vor
             digitalWrite(motorPin2,HIGH);
             delay(1000);
-            motor2Stop(); 
-      } else if (task.indexOf("motor2Stop") >= 0) {
-            motor2Stop(); 
-      } else if (task.indexOf("motor2ForwardWithSignal") >= 0) {  //das Signal enthält die gewünschte Geschwindigkeit
-        String speedString = task.substring((task.indexOf("motor2ForwardWithSignal") + 23), task.indexOf("motor2ForwardWithSignal") + 26);
+            motorStop(1);                    // Motor Stop
+      } else if (task.indexOf("motor1Backwards") >= 0) {
+            digitalWrite(motorPin1,HIGH);   // Motor Vor
+            digitalWrite(motorPin2,LOW);
+            delay(1000);
+            motorStop(1); 
+      } else if (task.indexOf("motor1Stop") >= 0) {
+            motorStop(1); 
+      } else if (task.indexOf("motor1ForwardWithSignal") >= 0) {  //das Signal enthält die gewünschte Geschwindigkeit
+        String speedString = task.substring((task.indexOf("motor1ForwardWithSignal") + 23), task.indexOf("motor1ForwardWithSignal") + 26);
         Serial.println("SPEED: " + speedString);
         int speed = speedString.toInt();
             digitalWrite(motorPin1, LOW);   // Motor langsam zu schnell
             analogWrite(motorPin2, speed);      
+      } else if (task.indexOf("motor1BackwardWithSignal") >= 0) {  //das Signal enthält die gewünschte Geschwindigkeit
+        String speedString = task.substring((task.indexOf("motor1BackwardWithSignal") + 24), task.indexOf("motor1BackwardWithSignal") + 27);
+        Serial.println("SPEED: " + speedString);
+        int speed = speedString.toInt();
+            digitalWrite(motorPin1, speed);   
+            analogWrite(motorPin2, LOW);  // Motor langsam zu schnell 
+      } else if (task.indexOf("motor2Forwards") >= 0) {
+            digitalWrite(motor2Pin1,LOW);   // Motor Vor
+            digitalWrite(motor2Pin2,HIGH);
+            delay(1000);
+            motorStop(2);                    // Motor Stop
+      } else if (task.indexOf("motor2Backwards") >= 0) {
+            digitalWrite(motor2Pin1,HIGH);   // Motor Vor
+            digitalWrite(motor2Pin2,LOW);
+            delay(1000);
+            motorStop(2); 
+      } else if (task.indexOf("motor2Stop") >= 0) {
+            motorStop(2); 
+      } else if (task.indexOf("motor2ForwardWithSignal") >= 0) {  //das Signal enthält die gewünschte Geschwindigkeit
+        String speedString = task.substring((task.indexOf("motor2ForwardWithSignal") + 23), task.indexOf("motor2ForwardWithSignal") + 26);
+        Serial.println("SPEED: " + speedString);
+        int speed = speedString.toInt();
+            digitalWrite(motor2Pin1, LOW);   // Motor langsam zu schnell
+            analogWrite(motor2Pin2, speed);      
       } else if (task.indexOf("motor2BackwardWithSignal") >= 0) {  //das Signal enthält die gewünschte Geschwindigkeit
         String speedString = task.substring((task.indexOf("motor2BackwardWithSignal") + 24), task.indexOf("motor2BackwardWithSignal") + 27);
         Serial.println("SPEED: " + speedString);
         int speed = speedString.toInt();
-            digitalWrite(motorPin1, speed);   // Motor langsam zu schnell
-            analogWrite(motorPin2, LOW);      
+            digitalWrite(motor2Pin1, speed);   
+            analogWrite(motor2Pin2, LOW);  // Motor langsam zu schnell 
       } else {
         debug("Wrong UDP Command");
+        sendUDP("Wrong UDP Command");
         if (sendCom("AT+CIPSEND=19", ">"))
         {
           sendCom("Wrong UDP Command", "OK");
@@ -137,6 +131,31 @@ void loop() {
     }
   }
 
+}
+
+void toggleLED(int setLED) {
+        digitalWrite(LED, setLED);
+        debug("LED=" + String(setLED));
+        sendUDP("LED=" + String(setLED));
+        if (sendCom("AT+CIPSEND=7", ">"))
+        {
+          sendCom("LED=" + String(setLED), "OK");
+        }
+        
+}
+
+void motorStop(int motorNumber){
+  switch (motorNumber ) {
+    case 1:
+    digitalWrite(motorPin1,LOW);
+    digitalWrite(motorPin2,LOW);
+    break;
+    case 2:{
+    digitalWrite(motor2Pin1,LOW);
+    digitalWrite(motor2Pin2,LOW);
+    break;
+  }
+}
 }
 
 //-----------------------------------------Config ESP8266------------------------------------
@@ -162,6 +181,18 @@ boolean configUDP()
 }
 
 //-----------------------------------------------Controll ESP-----------------------------------------------------
+
+boolean sendUDP(String Msg)
+{
+  boolean success = true;
+
+  success &= sendCom("AT+CIPSEND=" + String(Msg.length() + 2), ">");   
+  if (success)
+  {
+    success &= sendCom(Msg, "OK");
+  }
+  return success;
+}
 
 boolean sendCom(String command, char respond[])
 {

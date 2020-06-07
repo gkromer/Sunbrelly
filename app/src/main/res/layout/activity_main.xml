@@ -9,71 +9,47 @@
     tools:context=".MainActivity">
 
     <Button
-        android:id="@+id/backMotor1"
-        android:layout_width="wrap_content"
+        android:id="@+id/startMotor2"
+        android:layout_width="150dp"
         android:layout_height="wrap_content"
-        android:onClick="backMotor1"
-        android:text="Zurück Motor 1"
+        android:onClick="startMotor2"
+        android:text="Start Motor 2"
         app:layout_constraintBottom_toTopOf="@+id/title"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.206"
+        app:layout_constraintHorizontal_bias="0.846"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.763" />
+        app:layout_constraintVertical_bias="0.323" />
 
     <Button
-        android:id="@+id/stopMotor1"
-        android:layout_width="wrap_content"
+        android:id="@+id/backMotor2"
+        android:layout_width="150dp"
         android:layout_height="wrap_content"
-        android:onClick="stopMotor1"
-        android:text="Stop Motor 1"
+        android:onClick="backMotor2"
+        android:text="Zurück Motor 2"
         app:layout_constraintBottom_toTopOf="@+id/title"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.206"
+        app:layout_constraintHorizontal_bias="0.846"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.527" />
+        app:layout_constraintVertical_bias="0.892" />
 
     <Button
         android:id="@+id/stopMotor2"
-        android:layout_width="wrap_content"
+        android:layout_width="150dp"
         android:layout_height="wrap_content"
         android:onClick="stopMotor2"
         android:text="Stop Motor 2"
         app:layout_constraintBottom_toTopOf="@+id/title"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.781"
+        app:layout_constraintHorizontal_bias="0.846"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.527" />
-
-    <Button
-        android:id="@+id/backMotor2"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Zurück Motor 2"
-        app:layout_constraintBottom_toTopOf="@+id/title"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.781"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.763" />
-
-    <Button
-        android:id="@+id/startMotor2"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Start Motor 2"
-        app:layout_constraintBottom_toTopOf="@+id/title"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.781"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.29" />
+        app:layout_constraintVertical_bias="0.615" />
 
     <Button
         android:id="@+id/startMotor1"
-        android:layout_width="wrap_content"
+        android:layout_width="150dp"
         android:layout_height="wrap_content"
         android:onClick="startMotor1"
         android:text="Start Motor 1"
@@ -82,7 +58,33 @@
         app:layout_constraintHorizontal_bias="0.206"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.29" />
+        app:layout_constraintVertical_bias="0.323" />
+
+    <Button
+        android:id="@+id/stopMotor1"
+        android:layout_width="150dp"
+        android:layout_height="wrap_content"
+        android:onClick="stopMotor1"
+        android:text="Stop Motor 1"
+        app:layout_constraintBottom_toTopOf="@+id/title"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.206"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.615" />
+
+    <Button
+        android:id="@+id/backMotor1"
+        android:layout_width="150dp"
+        android:layout_height="wrap_content"
+        android:onClick="backMotor1"
+        android:text="Zurück Motor 1"
+        app:layout_constraintBottom_toTopOf="@+id/title"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.206"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.896" />
 
     <TextView
         android:id="@+id/output"
@@ -207,7 +209,7 @@
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.396" />
+        app:layout_constraintVertical_bias="0.397" />
 
     <Button
         android:id="@+id/set"
@@ -243,11 +245,21 @@
         android:layout_height="wrap_content"
         android:onClick="toggleLED"
         android:text="LED an"
-        app:layout_constraintBottom_toTopOf="@+id/title"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.498"
+        app:layout_constraintHorizontal_bias="0.532"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.055" />
+        app:layout_constraintVertical_bias="0.551" />
+
+    <TextView
+        android:id="@+id/textMessage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Answer from UDP"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

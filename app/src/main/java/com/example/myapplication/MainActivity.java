@@ -1,13 +1,17 @@
 package com.example.myapplication;
 
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.net.wifi.WifiManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.text.format.Formatter;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
@@ -20,6 +24,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 
 import okhttp3.Call;
@@ -39,6 +45,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private int signal = 0;
     private final int MAX_SIGNAL = 255;  //maximum der Arduino PWM
     private final int MIN_SIGNAL = -255;
+    private final int MIN_MOTOR_SPEED = 150;
     private final int sensitivity = 100; //how many lux the light needs to increase to start the motor
     TextView brightnessTextView;
     TextView signalTextView;
@@ -47,17 +54,24 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private float currentLux;
     private boolean hasLightSensor = false;
     private TextView serverSignal;
+
     OkHttpClient postClient = new OkHttpClient();
     Boolean isSearchingShadow = false;
     Boolean isStopped = false;
     private Button startMotor2;
     private Button backMotor2;
     private Handler mHandler;
+    private int holdingtime;
+    private final int MIN_HOLDING_TIME = 1; // wieviele Schleifendurchläufe ein Button gedrückt werden muss, bis er als gehalten statt geklickt gilt.
 
     private String ip = "192.168.4.1"; //default values for NanoESP
     private int port = 55057;
     boolean isLEDOn;
 
+    private long timeStartedSearchingShadow;
+    private long now;
+    private long timeElapsed;
+    int approxDirectionShadow;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -71,17 +85,20 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         stopStart = (TextView) findViewById(R.id.stop);
         toggleLEDBtn = (TextView) findViewById(R.id.toggleLEDBtn);
 
+
+        // new UDPReceive().execute();
+
         sensorManager = (SensorManager) this.getSystemService(SENSOR_SERVICE);
         light = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
 
         checkIfLightSensorIsAvailable();
 
-        sendMotorSignal(signal);
+        //sendMotorSignal(signal);
 
         startMotor2.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                switch(event.getAction()) {
+                switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
                         if (mHandler != null) return true;
                         mHandler = new Handler();
@@ -100,7 +117,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             }
 
             Runnable mAction = new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
+                    holdingtime++;
                     signal++;
                     motorForwardWithSignal(2, signal);
                     mHandler.postDelayed(this, 500);
@@ -111,7 +130,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         backMotor2.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-                switch(event.getAction()) {
+                switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
                         if (mHandler != null) return true;
                         mHandler = new Handler();
@@ -130,8 +149,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             }
 
             Runnable mAction = new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     signal--;
+                    holdingtime++;
                     motorBackwardWithSignal(2, signal);
                     mHandler.postDelayed(this, 500);
                 }
@@ -155,58 +176,73 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         isLEDOn = !isLEDOn;
     }
 
-    public void startMotor1(View view) { startMotor(1); }
+    public void startMotor1(View view) {
+        if (holdingtime < MIN_HOLDING_TIME) startMotor(1);
+        holdingtime = 0;
+    }
+
     public void startMotor2(View view) {
-        startMotor(2);
+        if (holdingtime < MIN_HOLDING_TIME) startMotor(2);
+        holdingtime = 0;
+    }
+
+    public void backMotor1(View view) {
+        if (holdingtime < MIN_HOLDING_TIME) backMotor(1);
+        holdingtime = 0;
+    }
+
+    public void backMotor2(View view) {
+        if (holdingtime < MIN_HOLDING_TIME) backMotor(2);
+        holdingtime = 0;
     }
 
     public void stopMotor1(View view) {
         stopMotor(1);
     }
-    public void stopMotor2(View view) { stopMotor(2); }
 
-    public void backMotor1(View view) { backMotor(1); }
-    public void backMotor2(View view) { backMotor(2); }
+    public void stopMotor2(View view) {
+        stopMotor(2);
+    }
 
     public void startMotor(int motorNumber) {
         Log.i("Motor", "started Motor " + motorNumber);
         new UDPTask("motor" + motorNumber + "Forwards", ip, port).execute();
-        Toast.makeText(MainActivity.this, "Motor " + motorNumber + " angeschaltet.", Toast.LENGTH_SHORT).show();
+        signalTextView.setText(Integer.toString(MAX_SIGNAL));
     }
 
     public void stopMotor(int motorNumber) {
         Log.i("Motor", "stopped Motor " + motorNumber);
         new UDPTask("motor" + motorNumber + "Stop", ip, port).execute();
-        Toast.makeText(MainActivity.this, "Motor " + motorNumber + " gestoppt.", Toast.LENGTH_SHORT).show();
+        signalTextView.setText(Integer.toString(0));
     }
 
     public void backMotor(int motorNumber) {
         Log.i("Motor", "started Motor " + motorNumber + " backwards");
         new UDPTask("motor" + motorNumber + "Backwards", ip, port).execute();
-        Toast.makeText(MainActivity.this, "Motor " + motorNumber + " andersrum gestartet.", Toast.LENGTH_SHORT).show();
+        signalTextView.setText(Integer.toString(-MAX_SIGNAL));
     }
 
     public void motorForwardWithSignal(int motorNumber, int signal) {
-        if (signal < 50) {
-            signal = 50;
+        if (signal < MIN_MOTOR_SPEED) {
+            this.signal = MIN_MOTOR_SPEED;
         }
-        String formattedSignal = String.format("%03d", signal);  // erzeugt aus Signal immer eine 3 Stellige Zahl mit vorne aufgefüllten Nullen (signal geht von 001 bis 255)
+        String formattedSignal = String.format("%03d", this.signal);  // erzeugt aus Signal immer eine 3 Stellige Zahl mit vorne aufgefüllten Nullen (signal geht von 001 bis 255)
         //signalTextView.setText(turnedAroundSignal);
         Log.i("Motor", "started Motor " + motorNumber + " vorwärts mit Geschwindigkeit: " + formattedSignal);
         new UDPTask("motor" + motorNumber + "ForwardWithSignal" + formattedSignal, ip, port).execute();
-        Toast.makeText(MainActivity.this, "Motor " + motorNumber + " vorwärts gestartet.", Toast.LENGTH_SHORT).show();
+        signalTextView.setText(Integer.toString(this.signal));
     }
 
     public void motorBackwardWithSignal(int motorNumber, int signal) {
-        if (signal > -50) {
-            signal = -50;
+        if (signal > -MIN_MOTOR_SPEED) {
+            this.signal = -MIN_MOTOR_SPEED;
         }
-        int absSignal = Math.abs(signal);
+        int absSignal = Math.abs(this.signal);
         String formattedSignal = String.format("%03d", absSignal);  // erzeugt aus Signal immer eine 3 Stellige Zahl mit vorne aufgefüllten Nullen (signal geht von 001 bis 255)
         //signalTextView.setText(turnedAroundSignal);
         Log.i("Motor", "started Motor " + motorNumber + " rückwärts mit Geschwindigkeit: " + formattedSignal);
         new UDPTask("motor" + motorNumber + "BackwardWithSignal" + formattedSignal, ip, port).execute();
-        Toast.makeText(MainActivity.this, "Motor " + motorNumber + " rückwärts gestartet.", Toast.LENGTH_SHORT).show();
+        signalTextView.setText(Integer.toString(this.signal));
     }
 
     private void checkIfLightSensorIsAvailable() {
@@ -232,15 +268,17 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     protected void onPause() {
         super.onPause();
         sensorManager.unregisterListener(this);
-        sendMsgToServer("User closed App");
+       // sendMsgToServer("User closed App");
+
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         sensorManager.registerListener(this, light, SensorManager.SENSOR_DELAY_NORMAL);
-        sendMsgToServer("User opened App");
+       // sendMsgToServer("User opened App");
     }
+
 
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
     }
@@ -255,43 +293,84 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     isReferenceInitialized = true;
                 }
                 if ((currentLux - referenceBrightness) > sensitivity && signal < MAX_SIGNAL) {
-                    //startMotor(1);
-                    if (signal < 50) {
-                        signal = 50;
-                    }
                     signal += 1;
-                    motorForwardWithSignal(2, signal);
-                    sendMotorSignal(signal);
+                    if (signal < MIN_MOTOR_SPEED) {
+                        signal = MIN_MOTOR_SPEED;
+                    }
+                    if (!isSearchingShadow) {
+                        timeStartedSearchingShadow = System.currentTimeMillis();
+                    }
+                    approxDirectionShadow = searchShadow();
                     isSearchingShadow = true;
+                    signalTextView.setText(Integer.toString(signal));
                 }
                 if (((currentLux - referenceBrightness) <= sensitivity) && isSearchingShadow) {
                     signal = 0;
                     stopMotor(2);
                     signalTextView.setText(Integer.toString(signal));
-                    sendMotorSignal(signal);
+          //          sendMotorSignal(signal);
                     isSearchingShadow = false;
+                    signalTextView.setText(Integer.toString(signal));
                 }
             }
         }
-
     }
+
+
+    public int searchShadow() {
+        now = System.currentTimeMillis();
+        timeElapsed = now - timeStartedSearchingShadow;
+        Log.i("info", "timeElapsed: " + timeElapsed);
+
+        if (now - timeStartedSearchingShadow >= 0 && now - timeStartedSearchingShadow < 3000) {
+            stopMotor(2);
+            motorForwardWithSignal(1, signal);
+            approxDirectionShadow = 1;
+        } else if (now - timeStartedSearchingShadow >= 3000 && now - timeStartedSearchingShadow < 6000) {
+            stopMotor(1);
+            motorForwardWithSignal(2, signal);
+            approxDirectionShadow = 2;
+        } else if (now - timeStartedSearchingShadow >= 6000 && now - timeStartedSearchingShadow < 9000) {
+            stopMotor(2);
+            motorBackwardWithSignal(1, signal);
+            approxDirectionShadow = 3;
+        } else if (now - timeStartedSearchingShadow >= 9000 && now - timeStartedSearchingShadow < 18000) {
+            stopMotor(1);
+            motorBackwardWithSignal(2, signal);
+            approxDirectionShadow = 4;
+        } else if (now - timeStartedSearchingShadow >= 18000 && now - timeStartedSearchingShadow < 27000) {
+            stopMotor(1);
+            motorBackwardWithSignal(2, signal);
+            approxDirectionShadow = 5;
+        } else if (now - timeStartedSearchingShadow >= 27000 && now - timeStartedSearchingShadow < 39000) {
+            stopMotor(1);
+            motorForwardWithSignal(2, signal);
+            approxDirectionShadow = 6;
+        } else if (now - timeStartedSearchingShadow >= 39000 && now - timeStartedSearchingShadow < 51000) {
+            stopMotor(2);
+            approxDirectionShadow = 7;
+        }
+        return approxDirectionShadow;
+    }
+
+    ;
 
     public void clickLeft(View view) {
         if (signal >= (MIN_SIGNAL + 10)) {
             Log.i("info", "Button links wurde geklickt!");
             signal -= 10;
-            signalTextView.setText(Integer.toString(signal));
+            motorBackwardWithSignal(2, signal);
         }
-        sendMotorSignal(signal);
+        //sendMotorSignal(signal);
     }
 
     public void clickRight(View view) {
         if (signal <= (MAX_SIGNAL - 10)) {
             Log.i("info", "Button rechts wurde geklickt!");
             signal += 10;
-            signalTextView.setText(Integer.toString(signal));
+            motorForwardWithSignal(2, signal);
         }
-        sendMotorSignal(signal);
+        //sendMotorSignal(signal);
     }
 
     public void setClicked(View view) {
@@ -306,103 +385,106 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             stopStart.setText("Start");
             signal = 0;
             signalTextView.setText(Integer.toString(signal));
-            sendMotorSignal(signal);
+            stopMotor(1);
+            stopMotor(2);
+           // sendMotorSignal(signal);
             Toast.makeText(MainActivity.this, "Lichtsteuerung ausgeschaltet.", Toast.LENGTH_SHORT).show();
         } else {
             isStopped = false;
             stopStart.setText("Stop");
             signal = 0;
             signalTextView.setText(Integer.toString(signal));
-            sendMotorSignal(signal);
+           // sendMotorSignal(signal);
             Toast.makeText(MainActivity.this, "Lichtsteuerung eingeschaltet.", Toast.LENGTH_SHORT).show();
         }
     }
-
-    public void sendMotorSignal(int signal) {
-        Log.d("OKHTTP", "Post signal function called");
-        String url = "https://shielded-everglades-18448.herokuapp.com/postSignal"; // connection to Java server
-        MediaType JSON = MediaType.parse("application/json;charset=utf-8");
-        JSONObject actualdata = new JSONObject();
-        try {
-            actualdata.put("signal", Integer.toString(signal));
-        } catch (JSONException e) {
-            Log.d("OKHHTP", "JSON Exception");
-            e.printStackTrace();
-        }
-        RequestBody body = RequestBody.create(JSON, actualdata.toString());
-        Log.d("OKHTTP", "RequestBody created");
-        Request newReq = new Request.Builder()
-                .url(url)
-                .post(body)
-                .build();
-        Log.d("OKHTTP", "Request build");
-
-        postClient.newCall(newReq).enqueue(new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
-                Log.d("OKHTTP", "FAILED");
-                e.printStackTrace();
-            }
-
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
-                if (response.isSuccessful()) {
-                    final String newRes = response.body().string();
-                    Log.d("OKHTTP", "onResponse() called");
-                    MainActivity.this.runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            serverSignal.setText(newRes);
-                            Log.d("OKHTTP", "Request done, got the response");
-                            Log.d("OKHTTP", newRes);
-                        }
-                    });
-                }
-            }
-
-        });
-    }
-
-    public void sendMsgToServer(String msg) {
-        Log.d("OKHTTP", "Post message function called");
-        String url = "https://shielded-everglades-18448.herokuapp.com/postMsg";
-        MediaType JSON = MediaType.parse("application/json;charset=utf-8");
-        JSONObject actualdata = new JSONObject();
-        try {
-            actualdata.put("msg", msg);
-        } catch (JSONException e) {
-            Log.d("OKHHTP", "JSON Exception");
-            e.printStackTrace();
-        }
-        RequestBody body = RequestBody.create(JSON, actualdata.toString());
-        Log.d("OKHTTP", "RequestBody created");
-        Request newReq = new Request.Builder()
-                .url(url)
-                .post(body)
-                .build();
-        Log.d("OKHTTP", "Request build");
-
-        postClient.newCall(newReq).enqueue(new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
-                Log.d("OKHTTP", "FAILED");
-                e.printStackTrace();
-            }
-
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
-                if (response.isSuccessful()) {
-                    final String newRes = response.body().string();
-                    Log.d("OKHTTP", "onResponse() called");
-                    MainActivity.this.runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            Log.d("OKHTTP", "Request done, got the response");
-                            Log.d("OKHTTP", newRes);
-                        }
-                    });
-                }
-            }
-        });
-    }
 }
+
+//    public void sendMotorSignal(int signal) {
+//        Log.d("OKHTTP", "Post signal function called");
+//        String url = "https://shielded-everglades-18448.herokuapp.com/postSignal"; // connection to Java server
+//        MediaType JSON = MediaType.parse("application/json;charset=utf-8");
+//        JSONObject actualdata = new JSONObject();
+//        try {
+//            actualdata.put("signal", Integer.toString(signal));
+//        } catch (JSONException e) {
+//            Log.d("OKHHTP", "JSON Exception");
+//            e.printStackTrace();
+//        }
+//        RequestBody body = RequestBody.create(JSON, actualdata.toString());
+//        Log.d("OKHTTP", "RequestBody created");
+//        Request newReq = new Request.Builder()
+//                .url(url)
+//                .post(body)
+//                .build();
+//        Log.d("OKHTTP", "Request build");
+//
+//        postClient.newCall(newReq).enqueue(new Callback() {
+//            @Override
+//            public void onFailure(Call call, IOException e) {
+//                Log.d("OKHTTP", "FAILED");
+//                e.printStackTrace();
+//            }
+//
+//            @Override
+//            public void onResponse(Call call, Response response) throws IOException {
+//                if (response.isSuccessful()) {
+//                    final String newRes = response.body().string();
+//                    Log.d("OKHTTP", "onResponse() called");
+//                    MainActivity.this.runOnUiThread(new Runnable() {
+//                        @Override
+//                        public void run() {
+//                            serverSignal.setText(newRes);
+//                            Log.d("OKHTTP", "Request done, got the response");
+//                            Log.d("OKHTTP", newRes);
+//                        }
+//                    });
+//                }
+//            }
+//
+//        });
+//    }
+//
+//    public void sendMsgToServer(String msg) {
+//        Log.d("OKHTTP", "Post message function called");
+//        String url = "https://shielded-everglades-18448.herokuapp.com/postMsg";
+//        MediaType JSON = MediaType.parse("application/json;charset=utf-8");
+//        JSONObject actualdata = new JSONObject();
+//        try {
+//            actualdata.put("msg", msg);
+//        } catch (JSONException e) {
+//            Log.d("OKHHTP", "JSON Exception");
+//            e.printStackTrace();
+//        }
+//        RequestBody body = RequestBody.create(JSON, actualdata.toString());
+//        Log.d("OKHTTP", "RequestBody created");
+//        Request newReq = new Request.Builder()
+//                .url(url)
+//                .post(body)
+//                .build();
+//        Log.d("OKHTTP", "Request build");
+//
+//        postClient.newCall(newReq).enqueue(new Callback() {
+//            @Override
+//            public void onFailure(Call call, IOException e) {
+//                Log.d("OKHTTP", "FAILED");
+//                e.printStackTrace();
+//            }
+//
+//            @Override
+//            public void onResponse(Call call, Response response) throws IOException {
+//                if (response.isSuccessful()) {
+//                    final String newRes = response.body().string();
+//                    Log.d("OKHTTP", "onResponse() called");
+//                    MainActivity.this.runOnUiThread(new Runnable() {
+//                        @Override
+//                        public void run() {
+//                            Log.d("OKHTTP", "Request done, got the response");
+//                            Log.d("OKHTTP", newRes);
+//                        }
+//                    });
+//                }
+//            }
+//        });
+//    }
+//}

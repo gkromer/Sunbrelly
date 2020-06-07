@@ -36,6 +36,8 @@ public class UDPTask extends AsyncTask<Void, Void, Void> {
     protected Void doInBackground(Void... voids) {
         try {
             DatagramSocket socket = new DatagramSocket();
+            socket.setSoTimeout(30000);
+            socket.setReuseAddress(true);
             InetAddress address = InetAddress.getByName(ip);
             Log.i("UDP", address.getHostAddress());
             Log.i("UDP", msg);
@@ -43,10 +45,13 @@ public class UDPTask extends AsyncTask<Void, Void, Void> {
             DatagramPacket packet
                     = new DatagramPacket(buf, buf.length, address, port);
             socket.send(packet);
-            socket.close();
+           // socket.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
         return null;
     }
+
+
 }
+
