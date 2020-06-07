@@ -2,6 +2,7 @@ package com.example.myapplication;
 
 import android.annotation.SuppressLint;
 import android.os.AsyncTask;
+import android.os.SystemClock;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -45,8 +46,9 @@ public class UDPTask extends AsyncTask<Void, Void, Void> {
             DatagramPacket packet
                     = new DatagramPacket(buf, buf.length, address, port);
             socket.send(packet);
+            Thread.sleep(3);
            // socket.close();
-        } catch (IOException e) {
+        } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
         return null;

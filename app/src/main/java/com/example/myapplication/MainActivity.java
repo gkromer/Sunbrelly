@@ -1,17 +1,13 @@
 package com.example.myapplication;
 
-import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.net.wifi.WifiManager;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.text.format.Formatter;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
@@ -20,21 +16,9 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.IOException;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.List;
 
-import okhttp3.Call;
-import okhttp3.Callback;
-import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
     private RelativeLayout myLayout = null;
@@ -42,13 +26,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private Sensor light;
     private float referenceBrightness;
     private boolean isReferenceInitialized = false;
-    private int signal = 0;
+    private int signal1 = 0;
+    private int signal2 = 0;
     private final int MAX_SIGNAL = 255;  //maximum der Arduino PWM
     private final int MIN_SIGNAL = -255;
     private final int MIN_MOTOR_SPEED = 150;
     private final int sensitivity = 100; //how many lux the light needs to increase to start the motor
     TextView brightnessTextView;
-    TextView signalTextView;
+    TextView signal1TextView;
+    TextView signal2TextView;
     TextView stopStart;
     TextView toggleLEDBtn;
     private float currentLux;
@@ -71,7 +57,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private long timeStartedSearchingShadow;
     private long now;
     private long timeElapsed;
-    int approxDirectionShadow;
+    int guessedShadeDirection;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -80,7 +66,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         startMotor2 = (Button) findViewById(R.id.startMotor2);
         backMotor2 = (Button) findViewById(R.id.backMotor2);
         brightnessTextView = (TextView) findViewById(R.id.lightSignal);
-        signalTextView = (TextView) findViewById(R.id.electricitySignal);
+        signal1TextView = (TextView) findViewById(R.id.textViewSignalMotor1);
+        signal2TextView = (TextView) findViewById(R.id.textViewSignalMotor2);
         serverSignal = (TextView) findViewById(R.id.serverSignal);
         stopStart = (TextView) findViewById(R.id.stop);
         toggleLEDBtn = (TextView) findViewById(R.id.toggleLEDBtn);
@@ -109,7 +96,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                         if (mHandler == null) return true;
                         mHandler.removeCallbacks(mAction);
                         mHandler = null;
-                        signal = 0;
+                        signal1 = 0;
                         stopMotor(2);
                         break;
                 }
@@ -120,8 +107,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 @Override
                 public void run() {
                     holdingtime++;
-                    signal++;
-                    motorForwardWithSignal(2, signal);
+                    signal1++;
+                    motorForwardWithSignal(2, signal1);
                     mHandler.postDelayed(this, 500);
                 }
             };
@@ -141,7 +128,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                         if (mHandler == null) return true;
                         mHandler.removeCallbacks(mAction);
                         mHandler = null;
-                        signal = 0;
+                        signal1 = 0;
                         stopMotor(2);
                         break;
                 }
@@ -151,9 +138,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             Runnable mAction = new Runnable() {
                 @Override
                 public void run() {
-                    signal--;
+                    signal1--;
                     holdingtime++;
-                    motorBackwardWithSignal(2, signal);
+                    motorBackwardWithSignal(2, signal1);
                     mHandler.postDelayed(this, 500);
                 }
             };
@@ -207,42 +194,42 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     public void startMotor(int motorNumber) {
         Log.i("Motor", "started Motor " + motorNumber);
         new UDPTask("motor" + motorNumber + "Forwards", ip, port).execute();
-        signalTextView.setText(Integer.toString(MAX_SIGNAL));
+        signal1TextView.setText(Integer.toString(MAX_SIGNAL));
     }
 
     public void stopMotor(int motorNumber) {
         Log.i("Motor", "stopped Motor " + motorNumber);
         new UDPTask("motor" + motorNumber + "Stop", ip, port).execute();
-        signalTextView.setText(Integer.toString(0));
+        signal1TextView.setText(Integer.toString(0));
     }
 
     public void backMotor(int motorNumber) {
         Log.i("Motor", "started Motor " + motorNumber + " backwards");
         new UDPTask("motor" + motorNumber + "Backwards", ip, port).execute();
-        signalTextView.setText(Integer.toString(-MAX_SIGNAL));
+        signal1TextView.setText(Integer.toString(-MAX_SIGNAL));
     }
 
     public void motorForwardWithSignal(int motorNumber, int signal) {
         if (signal < MIN_MOTOR_SPEED) {
-            this.signal = MIN_MOTOR_SPEED;
+            this.signal1 = MIN_MOTOR_SPEED;
         }
-        String formattedSignal = String.format("%03d", this.signal);  // erzeugt aus Signal immer eine 3 Stellige Zahl mit vorne aufgefüllten Nullen (signal geht von 001 bis 255)
+        String formattedSignal = String.format("%03d", this.signal1);  // erzeugt aus Signal immer eine 3 Stellige Zahl mit vorne aufgefüllten Nullen (signal geht von 001 bis 255)
         //signalTextView.setText(turnedAroundSignal);
         Log.i("Motor", "started Motor " + motorNumber + " vorwärts mit Geschwindigkeit: " + formattedSignal);
         new UDPTask("motor" + motorNumber + "ForwardWithSignal" + formattedSignal, ip, port).execute();
-        signalTextView.setText(Integer.toString(this.signal));
+        signal1TextView.setText(Integer.toString(this.signal1));
     }
 
     public void motorBackwardWithSignal(int motorNumber, int signal) {
         if (signal > -MIN_MOTOR_SPEED) {
-            this.signal = -MIN_MOTOR_SPEED;
+            this.signal1 = -MIN_MOTOR_SPEED;
         }
-        int absSignal = Math.abs(this.signal);
+        int absSignal = Math.abs(this.signal1);
         String formattedSignal = String.format("%03d", absSignal);  // erzeugt aus Signal immer eine 3 Stellige Zahl mit vorne aufgefüllten Nullen (signal geht von 001 bis 255)
         //signalTextView.setText(turnedAroundSignal);
         Log.i("Motor", "started Motor " + motorNumber + " rückwärts mit Geschwindigkeit: " + formattedSignal);
         new UDPTask("motor" + motorNumber + "BackwardWithSignal" + formattedSignal, ip, port).execute();
-        signalTextView.setText(Integer.toString(this.signal));
+        signal1TextView.setText(Integer.toString(this.signal1));
     }
 
     private void checkIfLightSensorIsAvailable() {
@@ -268,7 +255,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     protected void onPause() {
         super.onPause();
         sensorManager.unregisterListener(this);
-       // sendMsgToServer("User closed App");
+        // sendMsgToServer("User closed App");
 
     }
 
@@ -276,7 +263,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     protected void onResume() {
         super.onResume();
         sensorManager.registerListener(this, light, SensorManager.SENSOR_DELAY_NORMAL);
-       // sendMsgToServer("User opened App");
+        // sendMsgToServer("User opened App");
     }
 
 
@@ -292,83 +279,96 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     referenceBrightness = currentLux;
                     isReferenceInitialized = true;
                 }
-                if ((currentLux - referenceBrightness) > sensitivity && signal < MAX_SIGNAL) {
-                    signal += 1;
-                    if (signal < MIN_MOTOR_SPEED) {
-                        signal = MIN_MOTOR_SPEED;
-                    }
-                    if (!isSearchingShadow) {
-                        timeStartedSearchingShadow = System.currentTimeMillis();
-                    }
-                    approxDirectionShadow = searchShadow();
+                if ((currentLux - referenceBrightness) > sensitivity) {
+                    if (signal1 < MAX_SIGNAL) signal1 += 1;
+                    if (signal1 < MIN_MOTOR_SPEED) signal1 = MIN_MOTOR_SPEED;
+
+                    if (!isSearchingShadow) timeStartedSearchingShadow = System.currentTimeMillis();
+                    guessedShadeDirection = searchShadow();
                     isSearchingShadow = true;
-                    signalTextView.setText(Integer.toString(signal));
+                    signal1TextView.setText(Integer.toString(signal1));
                 }
                 if (((currentLux - referenceBrightness) <= sensitivity) && isSearchingShadow) {
-                    signal = 0;
+                    signal1 = 0;
                     stopMotor(2);
-                    signalTextView.setText(Integer.toString(signal));
-          //          sendMotorSignal(signal);
+                    signal1TextView.setText(Integer.toString(signal1));
+                    //          sendMotorSignal(signal);
                     isSearchingShadow = false;
-                    signalTextView.setText(Integer.toString(signal));
+                    signal1TextView.setText(Integer.toString(signal1));
                 }
             }
         }
     }
 
+    public void searchInDirection(int approxDirectionShadow) {
+        switch (approxDirectionShadow) {
+            case 1:
+                stopMotor(2);
+                motorForwardWithSignal(1, signal1);
+                break;
+            case 2:
+                stopMotor(1);
+                motorForwardWithSignal(2, signal1);
+                break;
+            case 3:
+                stopMotor(2);
+                motorBackwardWithSignal(1, signal1);
+                break;
+            case 4:
+                stopMotor(1);
+                motorBackwardWithSignal(2, signal1);
+                break;
+        }
+    }
 
     public int searchShadow() {
         now = System.currentTimeMillis();
         timeElapsed = now - timeStartedSearchingShadow;
         Log.i("info", "timeElapsed: " + timeElapsed);
-
         if (now - timeStartedSearchingShadow >= 0 && now - timeStartedSearchingShadow < 3000) {
-            stopMotor(2);
-            motorForwardWithSignal(1, signal);
-            approxDirectionShadow = 1;
+            guessedShadeDirection = 1;
+            searchInDirection(guessedShadeDirection);
         } else if (now - timeStartedSearchingShadow >= 3000 && now - timeStartedSearchingShadow < 6000) {
-            stopMotor(1);
-            motorForwardWithSignal(2, signal);
-            approxDirectionShadow = 2;
-        } else if (now - timeStartedSearchingShadow >= 6000 && now - timeStartedSearchingShadow < 9000) {
-            stopMotor(2);
-            motorBackwardWithSignal(1, signal);
-            approxDirectionShadow = 3;
-        } else if (now - timeStartedSearchingShadow >= 9000 && now - timeStartedSearchingShadow < 18000) {
-            stopMotor(1);
-            motorBackwardWithSignal(2, signal);
-            approxDirectionShadow = 4;
+            guessedShadeDirection = 2;
+            searchInDirection(guessedShadeDirection);
+        } else if (now - timeStartedSearchingShadow >= 6000 && now - timeStartedSearchingShadow < 12000) {
+            guessedShadeDirection = 3;
+            searchInDirection(guessedShadeDirection);
+        } else if (now - timeStartedSearchingShadow >= 12000 && now - timeStartedSearchingShadow < 18000) {
+            guessedShadeDirection = 4;
+            searchInDirection(guessedShadeDirection);
         } else if (now - timeStartedSearchingShadow >= 18000 && now - timeStartedSearchingShadow < 27000) {
-            stopMotor(1);
-            motorBackwardWithSignal(2, signal);
-            approxDirectionShadow = 5;
-        } else if (now - timeStartedSearchingShadow >= 27000 && now - timeStartedSearchingShadow < 39000) {
-            stopMotor(1);
-            motorForwardWithSignal(2, signal);
-            approxDirectionShadow = 6;
-        } else if (now - timeStartedSearchingShadow >= 39000 && now - timeStartedSearchingShadow < 51000) {
-            stopMotor(2);
-            approxDirectionShadow = 7;
+            guessedShadeDirection = 1;
+            searchInDirection(guessedShadeDirection);
+        } else if (now - timeStartedSearchingShadow >= 27000 && now - timeStartedSearchingShadow < 36000) {
+            guessedShadeDirection = 2;
+            searchInDirection(guessedShadeDirection);
+        } else if (now - timeStartedSearchingShadow >= 36000 && now - timeStartedSearchingShadow < 48000) {
+            guessedShadeDirection = 3;
+            searchInDirection(guessedShadeDirection);
+        } else if (now - timeStartedSearchingShadow >= 48000 && now - timeStartedSearchingShadow < 60000) {
+            guessedShadeDirection = 4;
+            searchInDirection(guessedShadeDirection);
         }
-        return approxDirectionShadow;
+        return guessedShadeDirection;
     }
 
     ;
 
     public void clickLeft(View view) {
-        if (signal >= (MIN_SIGNAL + 10)) {
+        if (signal1 >= (MIN_SIGNAL + 10)) {
             Log.i("info", "Button links wurde geklickt!");
-            signal -= 10;
-            motorBackwardWithSignal(2, signal);
+            signal1 -= 10;
+            motorBackwardWithSignal(2, signal1);
         }
         //sendMotorSignal(signal);
     }
 
     public void clickRight(View view) {
-        if (signal <= (MAX_SIGNAL - 10)) {
+        if (signal1 <= (MAX_SIGNAL - 10)) {
             Log.i("info", "Button rechts wurde geklickt!");
-            signal += 10;
-            motorForwardWithSignal(2, signal);
+            signal1 += 10;
+            motorForwardWithSignal(2, signal1);
         }
         //sendMotorSignal(signal);
     }
@@ -383,18 +383,18 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         if (!isStopped) {
             isStopped = true;
             stopStart.setText("Start");
-            signal = 0;
-            signalTextView.setText(Integer.toString(signal));
+            signal1 = 0;
+            signal1TextView.setText(Integer.toString(signal1));
             stopMotor(1);
             stopMotor(2);
-           // sendMotorSignal(signal);
+            // sendMotorSignal(signal);
             Toast.makeText(MainActivity.this, "Lichtsteuerung ausgeschaltet.", Toast.LENGTH_SHORT).show();
         } else {
             isStopped = false;
             stopStart.setText("Stop");
-            signal = 0;
-            signalTextView.setText(Integer.toString(signal));
-           // sendMotorSignal(signal);
+            signal1 = 0;
+            signal1TextView.setText(Integer.toString(signal1));
+            // sendMotorSignal(signal);
             Toast.makeText(MainActivity.this, "Lichtsteuerung eingeschaltet.", Toast.LENGTH_SHORT).show();
         }
     }
