@@ -31,6 +31,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private final int MAX_SIGNAL = 255;  //maximum der Arduino PWM
     private final int MIN_SIGNAL = -255;
     private final int MIN_MOTOR_SPEED = 150;
+    private final int MIN_MOTOR_SPEED_BACKWARDS = -150;
     private final int sensitivity = 100; //how many lux the light needs to increase to start the motor
     TextView brightnessTextView;
     TextView signal1TextView;
@@ -44,7 +45,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     OkHttpClient postClient = new OkHttpClient();
     Boolean isSearchingShadow = false;
     Boolean isStopped = false;
+    private Button startMotor1;
     private Button startMotor2;
+    private Button backMotor1;
     private Button backMotor2;
     private Handler mHandler;
     private int holdingtime;
@@ -63,7 +66,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        startMotor1 = (Button) findViewById(R.id.startMotor1);
         startMotor2 = (Button) findViewById(R.id.startMotor2);
+        backMotor1 = (Button) findViewById(R.id.backMotor1);
         backMotor2 = (Button) findViewById(R.id.backMotor2);
         brightnessTextView = (TextView) findViewById(R.id.lightSignal);
         signal1TextView = (TextView) findViewById(R.id.textViewSignalMotor1);
@@ -82,7 +87,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         //sendMotorSignal(signal);
 
-        startMotor2.setOnTouchListener(new View.OnTouchListener() {
+        startMotor1.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 switch (event.getAction()) {
@@ -97,7 +102,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                         mHandler.removeCallbacks(mAction);
                         mHandler = null;
                         signal1 = 0;
-                        stopMotor(2);
+                        stopMotor(1);
                         break;
                 }
                 return false;
@@ -108,7 +113,71 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 public void run() {
                     holdingtime++;
                     signal1++;
-                    motorForwardWithSignal(2, signal1);
+                    motorForwardWithSignal(1, signal1);
+                    mHandler.postDelayed(this, 500);
+                }
+            };
+        });
+
+        backMotor1.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        if (mHandler != null) return true;
+                        mHandler = new Handler();
+                        mHandler.postDelayed(mAction, 500);
+                        break;
+
+                    case MotionEvent.ACTION_UP:
+                        if (mHandler == null) return true;
+                        mHandler.removeCallbacks(mAction);
+                        mHandler = null;
+                        signal1 = 0;
+                        stopMotor(1);
+                        break;
+                }
+                return false;
+            }
+
+            Runnable mAction = new Runnable() {
+                @Override
+                public void run() {
+                    signal1--;
+                    holdingtime++;
+                    motorBackwardWithSignal(1, signal1);
+                    mHandler.postDelayed(this, 500);
+                }
+            };
+        });
+
+        startMotor2.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        if (mHandler != null) return true;
+                        mHandler = new Handler();
+                        mHandler.postDelayed(mAction, 500);
+                        break;
+
+                    case MotionEvent.ACTION_UP:
+                        if (mHandler == null) return true;
+                        mHandler.removeCallbacks(mAction);
+                        mHandler = null;
+                        signal2 = 0;
+                        stopMotor(2);
+                        break;
+                }
+                return false;
+            }
+
+            Runnable mAction = new Runnable() {
+                @Override
+                public void run() {
+                    holdingtime++;
+                    signal2++;
+                    motorForwardWithSignal(2, signal2);
                     mHandler.postDelayed(this, 500);
                 }
             };
@@ -128,7 +197,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                         if (mHandler == null) return true;
                         mHandler.removeCallbacks(mAction);
                         mHandler = null;
-                        signal1 = 0;
+                        signal2 = 0;
                         stopMotor(2);
                         break;
                 }
@@ -138,15 +207,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             Runnable mAction = new Runnable() {
                 @Override
                 public void run() {
-                    signal1--;
+                    signal2--;
                     holdingtime++;
-                    motorBackwardWithSignal(2, signal1);
+                    motorBackwardWithSignal(2, signal2);
                     mHandler.postDelayed(this, 500);
                 }
             };
         });
-
-
     }
 
     public void toggleLED(View view) {
@@ -183,53 +250,58 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         holdingtime = 0;
     }
 
-    public void stopMotor1(View view) {
-        stopMotor(1);
-    }
-
-    public void stopMotor2(View view) {
-        stopMotor(2);
-    }
-
     public void startMotor(int motorNumber) {
         Log.i("Motor", "started Motor " + motorNumber);
         new UDPTask("motor" + motorNumber + "Forwards", ip, port).execute();
-        signal1TextView.setText(Integer.toString(MAX_SIGNAL));
+        if (motorNumber == 1) signal1TextView.setText(Integer.toString(MAX_SIGNAL));
+        if (motorNumber == 2) signal2TextView.setText(Integer.toString(MAX_SIGNAL));
     }
 
     public void stopMotor(int motorNumber) {
         Log.i("Motor", "stopped Motor " + motorNumber);
         new UDPTask("motor" + motorNumber + "Stop", ip, port).execute();
-        signal1TextView.setText(Integer.toString(0));
+        if (motorNumber == 1) signal1TextView.setText(Integer.toString(0));
+        if (motorNumber == 2) signal2TextView.setText(Integer.toString(0));
     }
 
     public void backMotor(int motorNumber) {
         Log.i("Motor", "started Motor " + motorNumber + " backwards");
         new UDPTask("motor" + motorNumber + "Backwards", ip, port).execute();
-        signal1TextView.setText(Integer.toString(-MAX_SIGNAL));
+        if (motorNumber == 1) signal1TextView.setText(Integer.toString(-MAX_SIGNAL));
+        if (motorNumber == 2) signal2TextView.setText(Integer.toString(-MAX_SIGNAL));
     }
 
     public void motorForwardWithSignal(int motorNumber, int signal) {
-        if (signal < MIN_MOTOR_SPEED) {
-            this.signal1 = MIN_MOTOR_SPEED;
+        String formattedSignal = null;
+        if (motorNumber == 1) {
+            if (signal < MIN_MOTOR_SPEED) this.signal1 = MIN_MOTOR_SPEED;
+            formattedSignal = String.format("%03d", this.signal1);  // erzeugt aus Signal immer eine 3 Stellige Zahl mit vorne aufgefüllten Nullen (signal geht von 001 bis 255)
+        } else if (motorNumber == 2) {
+            if (signal < MIN_MOTOR_SPEED) this.signal2 = MIN_MOTOR_SPEED;
+            formattedSignal = String.format("%03d", this.signal2);  // erzeugt aus Signal immer eine 3 Stellige Zahl mit vorne aufgefüllten Nullen (signal geht von 001 bis 255)
         }
-        String formattedSignal = String.format("%03d", this.signal1);  // erzeugt aus Signal immer eine 3 Stellige Zahl mit vorne aufgefüllten Nullen (signal geht von 001 bis 255)
-        //signalTextView.setText(turnedAroundSignal);
         Log.i("Motor", "started Motor " + motorNumber + " vorwärts mit Geschwindigkeit: " + formattedSignal);
         new UDPTask("motor" + motorNumber + "ForwardWithSignal" + formattedSignal, ip, port).execute();
-        signal1TextView.setText(Integer.toString(this.signal1));
+        if (motorNumber == 1) signal1TextView.setText(Integer.toString(this.signal1));
+        if (motorNumber == 2) signal2TextView.setText(Integer.toString(this.signal2));
     }
 
     public void motorBackwardWithSignal(int motorNumber, int signal) {
-        if (signal > -MIN_MOTOR_SPEED) {
-            this.signal1 = -MIN_MOTOR_SPEED;
+        String formattedSignal = null;
+        int absSignal;
+        if (motorNumber == 1) {
+            if (signal > MIN_MOTOR_SPEED_BACKWARDS) this.signal1 = MIN_MOTOR_SPEED_BACKWARDS;
+            absSignal = Math.abs(this.signal1);
+            formattedSignal = String.format("%03d", absSignal);  // erzeugt aus Signal immer eine 3 Stellige Zahl mit vorne aufgefüllten Nullen (signal geht von 001 bis 255)
+        } else if (motorNumber == 2) {
+            if (signal > MIN_MOTOR_SPEED_BACKWARDS) this.signal2 = -MIN_MOTOR_SPEED;
+            absSignal = Math.abs(this.signal2);
+            formattedSignal = String.format("%03d", absSignal);  // erzeugt aus Signal immer eine 3 Stellige Zahl mit vorne aufgefüllten Nullen (signal geht von 001 bis 255)
         }
-        int absSignal = Math.abs(this.signal1);
-        String formattedSignal = String.format("%03d", absSignal);  // erzeugt aus Signal immer eine 3 Stellige Zahl mit vorne aufgefüllten Nullen (signal geht von 001 bis 255)
-        //signalTextView.setText(turnedAroundSignal);
         Log.i("Motor", "started Motor " + motorNumber + " rückwärts mit Geschwindigkeit: " + formattedSignal);
         new UDPTask("motor" + motorNumber + "BackwardWithSignal" + formattedSignal, ip, port).execute();
-        signal1TextView.setText(Integer.toString(this.signal1));
+        if (motorNumber == 1) signal1TextView.setText(Integer.toString(this.signal1));
+        if (motorNumber == 2) signal2TextView.setText(Integer.toString(this.signal2));
     }
 
     private void checkIfLightSensorIsAvailable() {
@@ -255,6 +327,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     protected void onPause() {
         super.onPause();
         sensorManager.unregisterListener(this);
+        this.signal1 = 0;
+        this.signal2 = 0;
+        stopMotor(1);
+        stopMotor(2);
         // sendMsgToServer("User closed App");
 
     }
@@ -267,7 +343,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
 
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {  // TODO:???
     }
 
     public void onSensorChanged(SensorEvent event) {
@@ -280,43 +356,49 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     isReferenceInitialized = true;
                 }
                 if ((currentLux - referenceBrightness) > sensitivity) {
-                    if (signal1 < MAX_SIGNAL) signal1 += 1;
-                    if (signal1 < MIN_MOTOR_SPEED) signal1 = MIN_MOTOR_SPEED;
-
                     if (!isSearchingShadow) timeStartedSearchingShadow = System.currentTimeMillis();
                     guessedShadeDirection = searchShadow();
                     isSearchingShadow = true;
-                    signal1TextView.setText(Integer.toString(signal1));
                 }
                 if (((currentLux - referenceBrightness) <= sensitivity) && isSearchingShadow) {
                     signal1 = 0;
+                    signal2 = 0;
+                    stopMotor(1);
                     stopMotor(2);
-                    signal1TextView.setText(Integer.toString(signal1));
                     //          sendMotorSignal(signal);
                     isSearchingShadow = false;
-                    signal1TextView.setText(Integer.toString(signal1));
                 }
             }
         }
+        signal1TextView.setText(Integer.toString(this.signal1));
+        signal2TextView.setText(Integer.toString(this.signal2));
     }
 
     public void searchInDirection(int approxDirectionShadow) {
         switch (approxDirectionShadow) {
             case 1:
+                signal2 = 0;
                 stopMotor(2);
+                increaseSignal(1);
                 motorForwardWithSignal(1, signal1);
                 break;
             case 2:
+                signal1 = 0;
                 stopMotor(1);
-                motorForwardWithSignal(2, signal1);
+                increaseSignal(2);
+                motorForwardWithSignal(2, signal2);
                 break;
             case 3:
+                signal2 = 0;
                 stopMotor(2);
+                decreaseSignal(1);
                 motorBackwardWithSignal(1, signal1);
                 break;
             case 4:
+                signal1 = 0;
                 stopMotor(1);
-                motorBackwardWithSignal(2, signal1);
+                decreaseSignal(2);
+                motorBackwardWithSignal(2, signal2);
                 break;
         }
     }
@@ -353,22 +435,48 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         return guessedShadeDirection;
     }
 
-    ;
+    public void increaseSignal(int motorNumber) {
+        if (motorNumber == 1) {
+            if (signal1 < MAX_SIGNAL) signal1 += 1;
+            if (signal1 < MIN_MOTOR_SPEED) signal1 = MIN_MOTOR_SPEED;
+        } else if (motorNumber == 2) {
+            if (signal2 < MAX_SIGNAL) signal2 += 1;
+            if (signal2 < MIN_MOTOR_SPEED) signal2 = MIN_MOTOR_SPEED;
+        }
+    }
+
+    public void decreaseSignal(int motorNumber) {
+        if (motorNumber == 1) {
+            if (signal1 > MIN_SIGNAL) signal1 -= 1;
+            if (signal1 > MIN_MOTOR_SPEED_BACKWARDS) signal1 = MIN_MOTOR_SPEED_BACKWARDS;
+        } else if (motorNumber == 2) {
+            if (signal2 > MIN_SIGNAL) signal2 -= 1;
+            if (signal2 > MIN_MOTOR_SPEED_BACKWARDS) signal2 = MIN_MOTOR_SPEED_BACKWARDS;
+        }
+    }
 
     public void clickLeft(View view) {
+        Log.i("info", "Button links wurde geklickt!");
         if (signal1 >= (MIN_SIGNAL + 10)) {
-            Log.i("info", "Button links wurde geklickt!");
             signal1 -= 10;
-            motorBackwardWithSignal(2, signal1);
+            motorBackwardWithSignal(1, signal1);
+        }
+        if (signal2 >= (MIN_SIGNAL + 10)) {
+            signal2 -= 10;
+            motorBackwardWithSignal(2, signal2);
         }
         //sendMotorSignal(signal);
     }
 
     public void clickRight(View view) {
+        Log.i("info", "Button rechts wurde geklickt!");
         if (signal1 <= (MAX_SIGNAL - 10)) {
-            Log.i("info", "Button rechts wurde geklickt!");
             signal1 += 10;
-            motorForwardWithSignal(2, signal1);
+            motorForwardWithSignal(1, signal1);
+        }
+        if (signal2 <= (MAX_SIGNAL - 10)) {
+            signal2 += 10;
+            motorForwardWithSignal(2, signal2);
         }
         //sendMotorSignal(signal);
     }
@@ -384,7 +492,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             isStopped = true;
             stopStart.setText("Start");
             signal1 = 0;
+            signal2 = 0;
             signal1TextView.setText(Integer.toString(signal1));
+            signal2TextView.setText(Integer.toString(signal1));
             stopMotor(1);
             stopMotor(2);
             // sendMotorSignal(signal);
@@ -392,9 +502,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         } else {
             isStopped = false;
             stopStart.setText("Stop");
-            signal1 = 0;
-            signal1TextView.setText(Integer.toString(signal1));
-            // sendMotorSignal(signal);
             Toast.makeText(MainActivity.this, "Lichtsteuerung eingeschaltet.", Toast.LENGTH_SHORT).show();
         }
     }

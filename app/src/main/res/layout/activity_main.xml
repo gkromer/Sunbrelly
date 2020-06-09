@@ -35,80 +35,54 @@
     <Button
         android:id="@+id/startMotor2"
         android:layout_width="150dp"
-        android:layout_height="wrap_content"
+        android:layout_height="71dp"
         android:onClick="startMotor2"
         android:text="Start Motor 2"
         app:layout_constraintBottom_toTopOf="@+id/title"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.846"
+        app:layout_constraintHorizontal_bias="0.881"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.323" />
+        app:layout_constraintVertical_bias="0.084" />
 
     <Button
         android:id="@+id/backMotor2"
         android:layout_width="150dp"
-        android:layout_height="wrap_content"
+        android:layout_height="71dp"
         android:onClick="backMotor2"
         android:text="Zurück Motor 2"
         app:layout_constraintBottom_toTopOf="@+id/title"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.846"
+        app:layout_constraintHorizontal_bias="0.881"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.892" />
-
-    <Button
-        android:id="@+id/stopMotor2"
-        android:layout_width="150dp"
-        android:layout_height="wrap_content"
-        android:onClick="stopMotor2"
-        android:text="Stop Motor 2"
-        app:layout_constraintBottom_toTopOf="@+id/title"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.846"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.615" />
+        app:layout_constraintVertical_bias="0.747" />
 
     <Button
         android:id="@+id/startMotor1"
         android:layout_width="150dp"
-        android:layout_height="wrap_content"
+        android:layout_height="71dp"
         android:onClick="startMotor1"
         android:text="Start Motor 1"
         app:layout_constraintBottom_toTopOf="@+id/title"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.206"
+        app:layout_constraintHorizontal_bias="0.13"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.323" />
-
-    <Button
-        android:id="@+id/stopMotor1"
-        android:layout_width="150dp"
-        android:layout_height="wrap_content"
-        android:onClick="stopMotor1"
-        android:text="Stop Motor 1"
-        app:layout_constraintBottom_toTopOf="@+id/title"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.206"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.615" />
+        app:layout_constraintVertical_bias="0.084" />
 
     <Button
         android:id="@+id/backMotor1"
         android:layout_width="150dp"
-        android:layout_height="wrap_content"
+        android:layout_height="71dp"
         android:onClick="backMotor1"
         android:text="Zurück Motor 1"
         app:layout_constraintBottom_toTopOf="@+id/title"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.206"
+        app:layout_constraintHorizontal_bias="0.13"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.896" />
+        app:layout_constraintVertical_bias="0.747" />
 
     <TextView
         android:id="@+id/output"
